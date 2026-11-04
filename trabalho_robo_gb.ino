@@ -26,8 +26,8 @@ volatile int ultimoCount = 0;
 
 //===Variaveis locais do seguidor_de_linha()===
 
-#define VELOCIDADE_BASE 150
-#define VELOCIDADE_CORRECAO 75
+#define VELOCIDADE_BASE 175
+#define VELOCIDADE_CORRECAO 100
 
 
 //=============================================
