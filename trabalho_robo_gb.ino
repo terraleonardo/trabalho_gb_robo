@@ -17,20 +17,25 @@
 #define MOTOR_ESQUERDO_IN_1 9
 
 //Variaveis globais
-int estado = SEGUIR_LINHA;
-int iCount = 0;
-int isObstaculo = 0;
+volatile int estado = SEGUIR_LINHA;
+volatile int iCount = 0;
+volatile int isObstaculo = 0;
+
+volatile int ultimoCount = 0;
 
 
 //===Variaveis locais do seguidor_de_linha()===
 
-#define VELOCIDADE_BASE 220
+#define VELOCIDADE_BASE 150
 #define VELOCIDADE_CORRECAO 75
+
 
 //=============================================
 
 
 void setup() {
+  Serial.begin(9600);
+
   //Configuração dos pinos
   pinMode(LED_DEBUG, OUTPUT);
   pinMode(IR_CONTADOR_LINHA, INPUT);
@@ -46,9 +51,20 @@ void setup() {
   
   attachInterrupt(digitalPinToInterrupt(IR_OBSTACULO), obstaculo, CHANGE);
   attachInterrupt(digitalPinToInterrupt(IR_CONTADOR_LINHA), contador_linha, RISING);
+
+  Serial.println("Sistema iniciado!");
 }
 
 void loop() {
+static int countAnterior = -1;
+
+if (ultimoCount != countAnterior) {
+  countAnterior = ultimoCount;
+
+  Serial.print("Contagem de linhas: ");
+  Serial.println(countAnterior);
+}
+
   switch(estado) {
     case SEGUIR_LINHA:
       seguidor_de_linha();
@@ -87,16 +103,16 @@ void seguidor_de_linha() {
   
 void realizar_a_curva() {
   // Curva para esquerda - Roda direita p/ frente e esquerda p/ trás 
-  parar();
-  delay(500);
+  // parar();
+  // delay(500);
 
   motorDireito(VELOCIDADE_BASE);
   motorEsquerdo(-VELOCIDADE_BASE);
 
-  delay(2000); // CALIBRAR O TEMPO PARA ELE GIRAR 90°
+  delay(1500); // CALIBRAR O TEMPO PARA ELE GIRAR 90°
 
-  parar();
-  delay(500);
+  // parar();
+  // delay(500);
 
   estado = SEGUIR_LINHA;
 }
@@ -114,28 +130,19 @@ void parar() {
 
   
 void contador_linha() {
-  iCount++;
-  delay(300);
-  
-  if(iCount == 1){
-    digitalWrite(LED_DEBUG, HIGH);
-    delay(300);
-    digitalWrite(LED_DEBUG, LOW);
-  }
+  static unsigned long tempoAnterior = 0;
 
-  if(iCount == 2){
-    digitalWrite(LED_DEBUG, HIGH);
-    delay(300);
-    digitalWrite(LED_DEBUG, LOW);
-    delay(300);
-    digitalWrite(LED_DEBUG, HIGH);
-    delay(300);
-    digitalWrite(LED_DEBUG, LOW);
-  }
-  
-  if(iCount == 3){
-    estado = CURVA;
-    iCount = 0;
+  if (millis() - tempoAnterior >= 300) {
+
+    tempoAnterior = millis();
+
+    iCount++;
+    ultimoCount = iCount;
+
+    if (iCount == 3) {
+      estado = CURVA;
+      iCount = 0;
+    }
   }
 }
 
