@@ -26,11 +26,17 @@ volatile int ultimoCount = 0;
 
 //===Variaveis locais do seguidor_de_linha()===
 
-#define VELOCIDADE_BASE 175
-#define VELOCIDADE_CORRECAO 100
-
+#define VELOCIDADE_BASE 200 // DEFINITIVO
+#define VELOCIDADE_CORRECAO 100 // DEFINITIVO
 
 //=============================================
+
+////===Variaveis locais do realizar_a_curva===
+#define VELOCIDADE_GIRO 150     // menor que a base: reduz inércia e overshoot
+#define TEMPO_MIN_GIRO 600      // ms para sair da linha antiga (ajustar)
+#define TIMEOUT_GIRO 2500       // ms, segurança caso a linha não seja achada
+
+volatile bool emCurva = false;
 
 
 void setup() {
@@ -102,19 +108,38 @@ void seguidor_de_linha() {
 }
   
 void realizar_a_curva() {
-  // Curva para esquerda - Roda direita p/ frente e esquerda p/ trás 
-  // parar();
-  // delay(500);
+  emCurva = true;
 
-  motorDireito(VELOCIDADE_BASE);
+  //
+  parar();
+  delay(500);
+  motorDireito(-VELOCIDADE_BASE);
   motorEsquerdo(-VELOCIDADE_BASE);
+  delay(400);
+  //
 
-  delay(1500); // CALIBRAR O TEMPO PARA ELE GIRAR 90°
 
-  // parar();
-  // delay(500);
+  unsigned long inicio = millis();
 
-  estado = SEGUIR_LINHA;
+  // Gira para a esquerda no próprio eixo
+  motorDireito(VELOCIDADE_GIRO);
+  motorEsquerdo(-VELOCIDADE_GIRO);
+
+  while (true) {
+
+    unsigned long decorrido = millis() - inicio;
+
+    // Só aceita a linha nova depois de ter saído da antiga
+    if (decorrido > TEMPO_MIN_GIRO) {
+      if (digitalRead(IR_SEGUIDOR_DIREITO) == 1) {
+        break;  // achou a linha nova
+      }
+    }
+  }
+
+  iCount = 0;
+  emCurva = false;
+  estado = SEGUIR_LINHA;  // o seguidor de linha assume e centraliza
 }
 
   
@@ -130,12 +155,11 @@ void parar() {
 
   
 void contador_linha() {
+  if (emCurva) return;   // <-- novo
+
   static unsigned long tempoAnterior = 0;
-
   if (millis() - tempoAnterior >= 300) {
-
     tempoAnterior = millis();
-
     iCount++;
     ultimoCount = iCount;
 
